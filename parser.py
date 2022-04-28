@@ -18,7 +18,21 @@ def check_exists_by_xpath(driver, xpath):
     return True
 
 
-def collect_reviews(driver):
+def collect_urls(driver, xpath):
+
+    urls = []
+    urls_web_elements = []
+
+    elements = driver.find_elements(By.XPATH, xpath)
+    for i in elements:
+        urls_web_elements.append(i)
+    for i in urls_web_elements:
+        urls.append(i.get_attribute("href"))
+
+    return urls
+
+
+def reviews_per_item(driver):
     return_list = []
     reviews = WebDriverWait(driver, 5, ignored_exceptions=ignored_exceptions) \
         .until(EC.presence_of_all_elements_located((By.XPATH, "//div[@class='current-comment']")))
@@ -42,24 +56,11 @@ def collect_reviews(driver):
             return_list.append(review_dict)
         except StaleElementReferenceException:
             print('stale element in collect_reviews, calling func again')
-            collect_reviews(driver)
+            reviews_per_item(driver)
     return return_list
 
-def collect_urls(driver, xpath):
 
-    urls = []
-    urls_web_elements = []
-
-    elements = driver.find_elements(By.XPATH, xpath)
-    for i in elements:
-        urls_web_elements.append(i)
-    for i in urls_web_elements:
-        urls.append(i.get_attribute("href"))
-
-    return urls
-
-
-def reviews_per_category(driver, page_url):
+def reviews_per_sub_category(driver, page_url):
     driver.get(page_url)
     urls = []
 
@@ -80,16 +81,16 @@ def reviews_per_category(driver, page_url):
         if check_exists_by_xpath(driver, "//div[@class='current-comment']"):
             if check_exists_by_xpath(driver, "//ul[@class='text-n-o-c pages']"):
                 while check_exists_by_xpath(driver, "//div[@class='back_pagin disabled-arrow']") is False:
-                    for i in collect_reviews(driver):
+                    for i in reviews_per_item(driver):
                         review_list.append(i)
                     try:
                         driver.find_element(By.XPATH, "//div[@class='back_pagin']").click()
                     except NoSuchElementException:
                         pass
-                for i in collect_reviews(driver):
+                for i in reviews_per_item(driver):
                     review_list.append(i)
             else:
-                for i in collect_reviews(driver):
+                for i in reviews_per_item(driver):
                     review_list.append(i)
 
             with open("reviews/{}.json".format(driver.find_element(By.XPATH, "//div[@class='product-name']").text.replace('/', ' ')), "w") as write_file:
@@ -98,9 +99,16 @@ def reviews_per_category(driver, page_url):
             print("No comments for {}".format(driver.current_url))
 
 
+def reviews_per_category(driver, page_url):
+    driver.get(page_url)
+    pages = collect_urls(driver, "//div[@class='node-item']/div/a")
+    for page in pages:
+        reviews_per_sub_category(driver, page)
+
+
 if __name__ == '__main__':
     options = Options()
     options.headless = True
     driver = webdriver.Firefox(executable_path='/home/alex/Downloads/geckodriver', options=options)
-    reviews_per_category(driver, "https://eldorado.ua/smartphones/c1038946/producer=samsung/")
+    reviews_per_category(driver, "https://eldorado.ua/node/c1285101/")
     driver.quit()

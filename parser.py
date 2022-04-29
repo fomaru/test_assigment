@@ -123,11 +123,9 @@ if __name__ == '__main__':
     options.headless = True
     driver = webdriver.Firefox(executable_path='/home/alex/Downloads/geckodriver', options=options)
     driver.get("https://eldorado.ua/")
-    # pages = collect_urls(driver, "//div[@class='main-category']//a")
-    # for index, page in enumerate(pages):
-    #     reviews_per_category(driver, page)
-    #     if index == 3:https://eldorado.ua/smartfon-samsung-galaxy-s21-8256-gb-phantom-grey-sm-g991-bzagsek-/p71312101/
-    #         break
-    # reviews_per_item(driver, "https://eldorado.ua/smartfon-samsung-galaxy-a52-4128-gb-black-sm-a525-fzkdsek-/p71321567/")
-    reviews_per_sub_category(driver, "https://eldorado.ua/smartphones/c1038946/producer=samsung/")
+    pages = collect_urls(driver, "//div[@class='main-category']//a")
+    for index, page in enumerate(pages):
+        reviews_per_category(driver, page)
+        if index == 3:
+            break
     driver.quit()

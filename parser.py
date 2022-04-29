@@ -32,9 +32,9 @@ def collect_urls(driver, xpath):
     return urls
 
 
-def reviews_per_item(driver):
+def collect_reviews(driver):
     return_list = []
-    reviews = WebDriverWait(driver, 5, ignored_exceptions=ignored_exceptions) \
+    reviews = WebDriverWait(driver, 10, ignored_exceptions=ignored_exceptions) \
         .until(EC.presence_of_all_elements_located((By.XPATH, "//div[@class='current-comment']")))
     title = driver.find_element(By.XPATH, "//div[@class='product-name']").text
     for review in reviews:
@@ -52,18 +52,50 @@ def reviews_per_item(driver):
                 "date": date,
                 "text": text
             }
-
             return_list.append(review_dict)
         except StaleElementReferenceException:
-            print('stale element in collect_reviews, calling func again')
-            reviews_per_item(driver)
+            print("Stale in {}".format(driver.current_url))
+            return collect_reviews(driver)
     return return_list
+
+
+def reviews_per_item(driver, page_url):
+    driver.get(page_url)
+    review_list = []
+
+    if check_exists_by_xpath(driver, "//div[@class='current-comment']"):
+        if check_exists_by_xpath(driver, "//ul[@class='text-n-o-c pages']"):
+            while check_exists_by_xpath(driver, "//div[@class='back_pagin disabled-arrow']") is False:
+                reviews = collect_reviews(driver)
+                for i in reviews:
+                    review_list.append(i)
+                try:
+                    driver.find_element(By.XPATH, "//div[@class='back_pagin']").click()
+                except NoSuchElementException:
+                    break
+                driver.implicitly_wait(1)
+
+            reviews = collect_reviews(driver)
+            for i in reviews:
+                review_list.append(i)
+        else:
+            reviews = collect_reviews(driver)
+            for i in reviews:
+                review_list.append(i)
+
+        with open("reviews/{}.json".format(
+                driver.find_element(By.XPATH, "//div[@class='product-name']").text.replace('/', ' ')),
+                  "a") as write_file:
+            json.dump(review_list, write_file, indent=4, ensure_ascii=False)
+    else:
+        print("No comments for {}".format(driver.current_url))
 
 
 def reviews_per_sub_category(driver, page_url):
     driver.get(page_url)
     urls = []
 
+    # go thought pagination pages and collect all urls
     if check_exists_by_xpath(driver, "//ul[@class='text-n-o-c pages']"):
         while check_exists_by_xpath(driver, "//div[@class='back_pagin disabled-arrow']") is False:
             for url in collect_urls(driver, "//div[@class='image-place']/a"):
@@ -76,27 +108,7 @@ def reviews_per_sub_category(driver, page_url):
             urls.append(url)
 
     for url in urls:
-        driver.get(url)
-        review_list = []
-        if check_exists_by_xpath(driver, "//div[@class='current-comment']"):
-            if check_exists_by_xpath(driver, "//ul[@class='text-n-o-c pages']"):
-                while check_exists_by_xpath(driver, "//div[@class='back_pagin disabled-arrow']") is False:
-                    for i in reviews_per_item(driver):
-                        review_list.append(i)
-                    try:
-                        driver.find_element(By.XPATH, "//div[@class='back_pagin']").click()
-                    except NoSuchElementException:
-                        pass
-                for i in reviews_per_item(driver):
-                    review_list.append(i)
-            else:
-                for i in reviews_per_item(driver):
-                    review_list.append(i)
-
-            with open("reviews/{}.json".format(driver.find_element(By.XPATH, "//div[@class='product-name']").text.replace('/', ' ')), "w") as write_file:
-                json.dump(review_list, write_file, indent=4, ensure_ascii=False)
-        else:
-            print("No comments for {}".format(driver.current_url))
+        reviews_per_item(driver, url)
 
 
 def reviews_per_category(driver, page_url):
@@ -110,5 +122,12 @@ if __name__ == '__main__':
     options = Options()
     options.headless = True
     driver = webdriver.Firefox(executable_path='/home/alex/Downloads/geckodriver', options=options)
-    reviews_per_category(driver, "https://eldorado.ua/node/c1285101/")
+    driver.get("https://eldorado.ua/")
+    # pages = collect_urls(driver, "//div[@class='main-category']//a")
+    # for index, page in enumerate(pages):
+    #     reviews_per_category(driver, page)
+    #     if index == 3:https://eldorado.ua/smartfon-samsung-galaxy-s21-8256-gb-phantom-grey-sm-g991-bzagsek-/p71312101/
+    #         break
+    # reviews_per_item(driver, "https://eldorado.ua/smartfon-samsung-galaxy-a52-4128-gb-black-sm-a525-fzkdsek-/p71321567/")
+    reviews_per_sub_category(driver, "https://eldorado.ua/smartphones/c1038946/producer=samsung/")
     driver.quit()

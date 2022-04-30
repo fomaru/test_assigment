@@ -85,7 +85,7 @@ def reviews_per_item(driver, page_url):
 
         with open("reviews/{}.json".format(
                 driver.find_element(By.XPATH, "//div[@class='product-name']").text.replace('/', ' ')),
-                  "a") as write_file:
+                  "w") as write_file:
             json.dump(review_list, write_file, indent=4, ensure_ascii=False)
     else:
         print("No comments for {}".format(driver.current_url))
@@ -95,22 +95,27 @@ def reviews_per_sub_category(driver, page_url):
     driver.get(page_url)
     urls = []
 
-    # handle pagination of the items
-    if check_exists_by_xpath(driver, "//ul[@class='text-n-o-c pages']"):
-        while check_exists_by_xpath(driver, "//div[@class='back_pagin disabled-arrow']") is False:
+    if check_exists_by_xpath(driver, "(//div[@class='node-item'])/div/a"):
+        reviews_per_category(driver, page_url)
+    else:
+        # handle pagination of the items commented out because it was taking to long for only 3 items
+        if check_exists_by_xpath(driver, "//ul[@class='text-n-o-c pages']"):
+            # while check_exists_by_xpath(driver, "//div[@class='back_pagin disabled-arrow']") is False:
+            #     for url in collect_urls(driver, "//div[@class='image-place']/a"):
+            #         urls.append(url)
+            #     driver.find_element(By.XPATH, "//div[@class='back_pagin']").click()
+            # for url in collect_urls(driver, "//div[@class='image-place']/a"):
+            #     urls.append(url)
             for url in collect_urls(driver, "//div[@class='image-place']/a"):
                 urls.append(url)
-            driver.find_element(By.XPATH, "//div[@class='back_pagin']").click()
-        for url in collect_urls(driver, "//div[@class='image-place']/a"):
-            urls.append(url)
-    else:
-        for url in collect_urls(driver, "//div[@class='image-place']/a"):
-            urls.append(url)
-# how many items per sub-category will be processed
-    for index, url in enumerate(urls):
-        reviews_per_item(driver, url)
-        if index == 2:
-            break
+        else:
+            for url in collect_urls(driver, "//div[@class='image-place']/a"):
+                urls.append(url)
+    # how many items per sub-category will be processed
+        for index, url in enumerate(urls):
+            reviews_per_item(driver, url)
+            if index == 2:
+                break
 
 # opens category page collects urls to subcategories and calls reviews_per_sub_category for all of the urls
 def reviews_per_category(driver, page_url):
@@ -123,6 +128,7 @@ def reviews_per_category(driver, page_url):
 if __name__ == '__main__':
     options = Options()
     options.headless = True
+    # !!!insert path your driver here!!!
     driver = webdriver.Firefox(executable_path='path/to/your/driver', options=options)
     driver.get("https://eldorado.ua/")
     pages = collect_urls(driver, "//div[@class='main-category']//a")
